@@ -146,7 +146,7 @@ whoami:
     - "traefik.http.routers.whoami.entrypoints=web"
 ```
 
-Les commentaires sont assez clairs ici. Sur la première ligne on expose le conteneur de manière explicite. La ligne importante est `traefik.http.routers.whoami.rule=Host(`whoami.test`)`. Il attribue un nom de domaine au service de Traefik.
+Les commentaires sont assez clairs ici. Sur la première ligne on expose le conteneur de manière explicite. La ligne importante est `traefik.http.routers.whoami.rule=Host(whoami.test)`. Il attribue un nom de domaine au service de Traefik. On prendre bien soin de mettre ce nom en `.test`.
 
 ## Tester le bon fonctionnement
 
@@ -161,4 +161,6 @@ Donc pour résumer quand je taperai `whoami.test` dans mon navigateur:
 - La requete `whoami.test` passe dans Traefik. Traefik regarde si il a un service labelisé `whoami.test`. Si c'est le cas, il retrouve sa configuration de routing et renvoie la requête vers l'adresse ip du conteneur.
 - Le conteneur nous répond et on récupère le résultat dans le navigateur
 
-Magnifique !
+Une fois lancé et cette configuration faite, vous n'aurez plus besoin d'y toucher.
+
+Have fun.
