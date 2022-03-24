@@ -1,2 +1,2 @@
 # local-env-docker
-Small reverse proxy service dockerised and local dns configuration to build a dev-friendly environement
+Un petit reverse proxy dockerisé et une configuration dns locale pour se faire un environnement de dev docker accueillant 
