@@ -3,10 +3,11 @@
 - [Environnement de développement local Dockerisé derrière un reverse-proxy](#environnement-de-développement-local-dockerisé-derrière-un-reverse-proxy)
   - [Objectifs](#objectifs)
   - [Mise en place d'un dns local avec `dnsmasq`](#mise-en-place-dun-dns-local-avec-dnsmasq)
-  - [Nouveau dépôt](#nouveau-dépôt)
   - [Configuration de Traefik](#configuration-de-traefik)
     - [Lancement du conteneur Traefik](#lancement-du-conteneur-traefik)
     - [Intercepter uniquement les reqûetes vers nos conteneurs Docker](#intercepter-uniquement-les-reqûetes-vers-nos-conteneurs-docker)
+  - [Tester le bon fonctionnement](#tester-le-bon-fonctionnement)
+  - [En résumé](#en-résumé)
 
 Un petit reverse proxy dockerisé et une configuration dns locale pour se faire un environnement de dev docker accueillant
 
@@ -63,11 +64,7 @@ Vous devriez voir que le ping vers n'importe quel sous-domaine de `.test` est bi
 
 Donc dorénavant toutes vos requêtes depuis votre navigateur vers un sous domaine de `.test` n'ira jamais vers l'Internet. Mais si un site web est en `.test` ? Justement non et c'est tout l'intérêt d'utiliser ce nom de domaine: il est reservé pour le test et le développement. Vous êtes donc garantis par les standards de ne jamais perdre accès à un site en `.test` puisqu'il y'en aura jamais.
 
-## Nouveau dépôt
-
 Notre seule config sur notre machine locale est terminée. A présent nous allons pouvoir mettre en place notre reverse proxy.
-
-Dans notre dépôt dédié `local-env-docker` (et complètement indépendant de notre starterpack et de son dépôt) on va crée un fichier `docker-compose.yml` et un `.env` pour _dockeriser_ `Traefik`.
 
 ## Configuration de Traefik
 
@@ -150,3 +147,18 @@ whoami:
 ```
 
 Les commentaires sont assez clairs ici. Sur la première ligne on expose le conteneur de manière explicite. La ligne importante est `traefik.http.routers.whoami.rule=Host(`whoami.test`)`. Il attribue un nom de domaine au service de Traefik.
+
+## Tester le bon fonctionnement
+
+Visitez à présent `whoami.test` depuis votre navigateur favori. Vous devriez tomber sur la réponse du service comme attendu.
+
+## En résumé
+
+Donc pour résumer quand je taperai `whoami.test` dans mon navigateur:
+
+- ma configuration dns locale va repérer le `.test` et rediriger la reqûete vers ma machine, sur le port `80`
+- Traefik, qui écoute sur le port 80, va regarder si cette requête finit en `.test`. Si c'est le cas on continue, sinon Traefik ignore
+- La requete `whoami.test` passe dans Traefik. Traefik regarde si il a un service labelisé `whoami.test`. Si c'est le cas, il retrouve sa configuration de routing et renvoie la requête vers l'adresse ip du conteneur.
+- Le conteneur nous répond et on récupère le résultat dans le navigateur
+
+Magnifique !
