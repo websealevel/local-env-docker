@@ -6,6 +6,7 @@
   - [Configuration de Traefik](#configuration-de-traefik)
     - [Lancement du conteneur Traefik](#lancement-du-conteneur-traefik)
     - [Intercepter uniquement les reqûetes vers nos conteneurs Docker](#intercepter-uniquement-les-reqûetes-vers-nos-conteneurs-docker)
+  - [Créer un réseau docker `web`](#créer-un-réseau-docker-web)
   - [Tester le bon fonctionnement](#tester-le-bon-fonctionnement)
   - [En résumé](#en-résumé)
 
@@ -147,6 +148,15 @@ whoami:
 ```
 
 Les commentaires sont assez clairs ici. Sur la première ligne on expose le conteneur de manière explicite. La ligne importante est `traefik.http.routers.whoami.rule=Host(whoami.test)`. Il attribue un nom de domaine au service de Traefik. On prendre bien soin de mettre ce nom en `.test`.
+
+## Créer un réseau docker `web`
+
+On crée un réseau docker `web` avec la commande
+
+```
+docker network create web
+```
+Ce réseau sera crée une fois et servira à tous nos conteneurs de tous nos projets.
 
 ## Tester le bon fonctionnement
 

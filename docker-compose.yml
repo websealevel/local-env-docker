@@ -15,6 +15,7 @@ services:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
 
+    container_name: traefik
     command:
       #- "--log.level=DEBUG"
       - "--api.insecure=true"
@@ -22,7 +23,8 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--providers.docker.network=web"
-      - "--providers.docker.defaultrule=HostRegexp(`{subdomain:[a-z0-9]+}.test`)"
+      - "--providers.docker.watch=true"
+      - "--providers.docker.defaultrule=HostRegexp(`{subdomain:[a-z0-9]+}.${TRAEFIK_DOMAIN}`)"
 
   whoami:
     # A container that exposes an API to show its IP address
