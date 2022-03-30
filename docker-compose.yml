@@ -21,8 +21,8 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
       - "--providers.docker.network=web"
+      - "--entrypoints.web.address=:80"
       - "--providers.docker.watch=true"
       - "--providers.docker.defaultrule=HostRegexp(`{subdomain:[a-z0-9]+}.${TRAEFIK_DOMAIN}`)"
 
