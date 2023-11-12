@@ -2,7 +2,7 @@
 
 - [Environnement de développement local Dockerisé derrière un reverse-proxy](#environnement-de-développement-local-dockerisé-derrière-un-reverse-proxy)
   - [Objectifs](#objectifs)
-  - [Mise en place d'un dns local avec `dnsmasq`](#mise-en-place-dun-dns-local-avec-dnsmasq)
+  - [Mise en place d'un DNS local avec `dnsmasq`](#mise-en-place-dun-dns-local-avec-dnsmasq)
   - [Configuration de Traefik](#configuration-de-traefik)
     - [Lancement du conteneur Traefik](#lancement-du-conteneur-traefik)
     - [Intercepter uniquement les requêtes vers nos conteneurs Docker](#intercepter-uniquement-les-requêtes-vers-nos-conteneurs-docker)
@@ -10,28 +10,24 @@
   - [Tester le bon fonctionnement](#tester-le-bon-fonctionnement)
   - [En résumé](#en-résumé)
 
-Un petit reverse proxy dockerisé et une configuration dns locale pour se faire un environnement de dev docker accueillant
+Un petit reverse proxy *dockerisé* et une configuration DNS locale pour se faire un environnement de dev *docker accueillant*.
 
-Cet article est tiré d'un article plus complet sur la mise en place d'un starterpack utilisant ce reverse proxy que vous trouverez sur le [dépôt suivant](https://github.com/websealevel/starterpack-front-php-mysql-phpmyadmin).
+Cet article est tiré d'un article plus complet sur la mise en place d'un *starterpack* utilisant ce reverse proxy que vous trouverez sur le [dépôt suivant](https://github.com/websealevel/starterpack-front-php-mysql-phpmyadmin).
 
 ## Objectifs
 
-Nous l'avons dit dans la [section précédente](#aller-un-peu-plus-loin-acceder-à-nos-conteneurs-via-un-nom-de-domaine) notre starterpack est bien mais on peut faire mieux dans le cas où l'on souhaite travailler sur plusieurs projets en même temps sans avoir à toucher de la config et maintenir des états.
-
-Pour régler ce problème on va utiliser un autre outil, le service [Traefik](https://doc.traefik.io/traefik/). On va s'en servir comme [reverse proxy](https://fr.wikipedia.org/wiki/Proxy_inverse). Il servira d'intermédiaire pour accéder à nos conteneurs Docker.
-
 Illustrons concrètement ce que l'on cherche à faire: je démarre un projet `foobar` avec mon starterpack. J'ai déjà deux autres projets sur lesquels je travaille issus de mon pack. Je m'en soucie pas. J'accède par exemple à mon service `back` depuis mon navigateur en requêtant `back.foobar.test`. Le domaine `.test` [est recommandé](https://fr.wikipedia.org/wiki/.test) car il a été reservé pour offrir un domaine qui ne rentre pas en conflit avec des domaines réels d'Internet. Pour accéder à phpmyadmin de mon projet je tape `phpmyadmin.foobar.test`. Etc... Pratique non ? D'une part je n'ai plus besoin de savoir quels ports sont déjà réservés sur tel ou tel projet ni de les gérer. Enfin `back.foobar.test` est plus explicite que `localhost:90001`. Si je me donne une règle de syntaxe je peux retrouver n'importe quel conteneur de n'importe quel projet facilement six mois plus tard.
 
-Pour y parvenir, on va se servir d'un serveur dns local et d'un reverse-proxy. On va mettre en place un service qui va essayer de résoudre le nom de domaine à partir d'une configuration sur votre machine avant d'interroger un vrai serveur dns d'internet. Quand on tapera l'url `back.foobar.test`, notre système de dns va donc regarder s'il trouve un pattern, ici le domaine `.test` et tous les [sous-domaines associés](https://fr.wikipedia.org/wiki/Nom_de_domaine), par exemple `back.foobar.test`. S'il le trouve, il va rediriger la requête faite depuis notre navigateur vers notre machine au lieu d'aller requêter l'Internet. C'est là que notre reverse proxy rentre en jeu: il va recevoir la requete, et s'il est bien configuré, va résoudre le nom de domaine pour nous servir le conteneur Docker de notre projet. Voilà le plan:
+Pour y parvenir, on va se servir d'un serveur dns local et d'un reverse-proxy. On va mettre en place un service qui va essayer de résoudre le nom de domaine à partir d'une configuration sur votre machine avant d'interroger un vrai serveur dns d'internet. Quand on tapera l'url `back.foobar.test`, notre système de dns va donc regarder s'il trouve un pattern, ici le domaine `.test` et tous les [sous-domaines associés](https://fr.wikipedia.org/wiki/Nom_de_domaine), par exemple `back.foobar.test`. S'il le trouve, il va rediriger la requête faite depuis notre navigateur vers notre machine au lieu d'aller requêter l'Internet. C'est là que notre reverse proxy rentre en jeu: il va recevoir la requête, et s'il est bien configuré, va résoudre le nom de domaine pour nous servir le conteneur Docker de notre projet. Voilà le plan:
 
-- utiliser le domaine reservé `.test` pour capter tous les sous-domaines (aka tous nos projets de dev) et renvoyer les reqûetes vers notre machine. C'est le job de notre service dns local
-- intercepter les requêtes entrant sur notre machine pour les résoudre et les rediriger vers le bon conteneur Docker, par exemple le phpmyadmin d'un de nos projets. C'est le job du [reverse-proxy](https://fr.wikipedia.org/wiki/Proxy_inverse), il agit comme un portique par lequel les requêtes entrantes vont devoir passer pour être traitées selon nos besoins.
+- Utiliser le domaine réservé `.test` pour capter tous les sous-domaines (aka tous nos projets de dev) et renvoyer les requêtes vers notre machine. C'est le job de notre service dns local
+- Intercepter les requêtes entrant sur notre machine pour les résoudre et les rediriger vers le bon conteneur Docker, par exemple le phpmyadmin d'un de nos projets. C'est le job du [reverse-proxy](https://fr.wikipedia.org/wiki/Proxy_inverse), il agit comme un portique par lequel les requêtes entrantes vont devoir passer pour être traitées selon nos besoins.
 
 Pour mettre en place ce système on va avoir besoin de conteneurs Docker car on va conteneurisé le reverse proxy (et oui, encore, le minimum sur notre machine). Pour cela, on va créer un nouveau dépôt en dehors de notre starterpack. Un projet, un dépôt, c'est la règle. Ce projet vivra sa vie de manière indépendante sur votre machine et pourra servir à tous vos projets en local et non seulement à ceux réalisés avec votre starterpack. Quand on l'aura cablé, on le lancera une fois pour toute et vous n'y retoucherez plus jamais.
 
 Créer donc un autre dépôt sur votre machine, par exemple `local-env-docker` et allons-y.
 
-## Mise en place d'un dns local avec `dnsmasq`
+## Mise en place d'un DNS local avec `dnsmasq`
 
 Mettons en place ce système. Je le fais sur Linux, si vous êtes sur un autre OS il faudra trouver des façons équivalentes de faire la même chose. L'idée restera la même.
 
@@ -55,7 +51,7 @@ Ici on map le pattern `.test` à l'ip de notre machine pour qu'une requête comm
 
 A présent toutes les requêtes émises par notre machine vers les sous-domaines de `.test` devraient être interceptées et redirigées sur elle même (et non vers l'Internet). Testons cela
 
-```
+```bash
 ping foobar.test
 ping back.example.test
 ping front.projet.test
@@ -63,7 +59,7 @@ ping front.projet.test
 
 Vous devriez voir que le ping vers n'importe quel sous-domaine de `.test` est bien redirigé vers notre machine, à savoir vers l'ip `127.0.0.1`, `localhost` en somme. Parfait, c'est exactement ce que nous voulions !
 
-Donc dorénavant toutes vos requêtes depuis votre navigateur vers un sous domaine de `.test` n'ira jamais vers l'Internet. Mais si un site web est en `.test` ? Justement non et c'est tout l'intérêt d'utiliser ce nom de domaine: il est reservé pour le test et le développement. Vous êtes donc garantis par les standards de ne jamais perdre accès à un site en `.test` puisqu'il y'en aura jamais.
+Donc dorénavant toutes vos requêtes depuis votre navigateur vers un sous domaine de `.test` n'ira jamais vers l'Internet. Mais si un site web est en `.test` ? Justement non et c'est tout l'intérêt d'utiliser ce nom de domaine: il est réservé pour le test et le développement. Vous êtes donc garantis par les standards de ne jamais perdre accès à un site en `.test` puisqu'il y'en aura jamais.
 
 Notre seule config sur notre machine locale est terminée. A présent nous allons pouvoir mettre en place notre reverse proxy.
 
@@ -88,7 +84,7 @@ Regardons aussi [cette page](https://doc.traefik.io/traefik/getting-started/conf
 Déjà on ne veut pas que Traefik intercepte toutes les requêtes entrantes, seulement les requêtes HTTP (nos requêtes en `.test`). Pour cela on va utiliser la directive
 `entryPoints` directement dans notre `docker-compose.yml`, c'est de la [configuration dynamique](https://doc.traefik.io/traefik/getting-started/configuration-overview/#the-dynamic-configuration) car elle va s'adapter à chaque situation. Voici notre service reverse-proxy, en s'inspirant directement de l'[exemple donné dans la doc](https://doc.traefik.io/traefik/user-guides/docker-compose/basic-example/)
 
-```
+```yaml
 services:
   reverse-proxy:
     # The official v2 Traefik docker image
@@ -129,7 +125,7 @@ Donc là, on a dit de récuperer les requêtes HTTP mais on veut être encore pl
 
 Ajoutons les configurations suivantes
 
-```
+```yaml
       - "--providers.docker.network=web"
       - "--providers.docker.defaultrule=HostRegexp(`{subdomain:[a-z]+}.test`)"
 ```
@@ -142,7 +138,7 @@ Relancez le projet avec `docker-compose up -d`. Si vous retournez sur `http://lo
 
 Comment ré-intégrer notre service whoami à Traefik ? Pour cela on va ajouter un peu de config sur notre service `whoami` sous la clef `labels`. Labeliser nos conteneurs permet à Traefik de retrouver sa configuration de routing, et donc au final le conteneur ciblé en retrouvant son adresse ip.
 
-```
+```yaml
 whoami:
   labels:
     # Explicitly tell Traefik to expose this container
@@ -164,7 +160,7 @@ Le `router` ici est appelé `whoami`, comme notre service. Chaque `router` est d
 
 Donc lorsque vous voulez monter à la chaine plusieurs projets dans ce setup, il faudra bien labeliser vos services comme suit
 
-```
+```yaml
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${PROJECT_NAME}.rule=Host(`${PROJECT_NAME}.test`)"
@@ -177,10 +173,10 @@ où `${PROJECT_NAME}` sera une variable d'environnement identifiant votre projet
 
 On crée un réseau docker `web` avec la commande
 
-```
+```bash
 docker network create web
 ```
-Ce réseau sera crée une fois et servira à tous nos conteneurs de tous nos projets que l'on souhaitera exposer au monde exeterieur.
+Ce réseau sera crée une fois et servira à tous nos conteneurs de tous nos projets que l'on souhaitera exposer au monde extérieur.
 
 ## Tester le bon fonctionnement
 
@@ -190,11 +186,11 @@ Visitez à présent `whoami.test` depuis votre navigateur favori. Vous devriez t
 
 Donc pour résumer quand je taperai `whoami.test` dans mon navigateur:
 
-- ma configuration dns locale va repérer le `.test` et rediriger la reqûete vers ma machine, sur le port `80`
+- Ma configuration dns locale va repérer le `.test` et rediriger la reqûete vers ma machine, sur le port `80`
 - Traefik, qui écoute sur le port `80`, va regarder si cette requête finit en `.test`. Si c'est le cas on continue, sinon Traefik l'ignore
-- la requete `whoami.test` passe dans Traefik. Traefik regarde si il a un service labelisé `whoami.test`. Si c'est le cas, il retrouve sa configuration de routing, son `router`, et renvoie la requête vers l'adresse ip du conteneur.
+- La requete `whoami.test` passe dans Traefik. Traefik regarde si il a un service labelisé `whoami.test`. Si c'est le cas, il retrouve sa configuration de routing, son `router`, et renvoie la requête vers l'adresse ip du conteneur.
 - Le conteneur nous répond et on récupère le résultat dans le navigateur
 
 Une fois lancé et cette configuration faite, vous n'aurez plus besoin d'y toucher.
 
-Have fun.
+*Have fun !*
