@@ -121,7 +121,7 @@ Un _router_ est en charge de rediriger les requêtes entrantes vers le service T
 
 ### Intercepter uniquement les requêtes vers nos conteneurs Docker
 
-Donc là, on a dit de récuperer les requêtes HTTP mais on veut être encore plus restrictif et ne pas interférer avec le trafic sur notre machine, on veut récupérer seulement les requêtes en `.test`.
+Donc là, on a dit de récupérer les requêtes HTTP mais on veut être encore plus restrictif et ne pas interférer avec le trafic sur notre machine, on veut récupérer seulement les requêtes en `.test`.
 
 Ajoutons les configurations suivantes
 
@@ -186,7 +186,7 @@ Visitez à présent `whoami.test` depuis votre navigateur favori. Vous devriez t
 
 Donc pour résumer quand je taperai `whoami.test` dans mon navigateur:
 
-- Ma configuration dns locale va repérer le `.test` et rediriger la reqûete vers ma machine, sur le port `80`
+- Ma configuration dns locale va repérer le `.test` et rediriger la requête vers ma machine, sur le port `80`
 - Traefik, qui écoute sur le port `80`, va regarder si cette requête finit en `.test`. Si c'est le cas on continue, sinon Traefik l'ignore
 - La requete `whoami.test` passe dans Traefik. Traefik regarde si il a un service labelisé `whoami.test`. Si c'est le cas, il retrouve sa configuration de routing, son `router`, et renvoie la requête vers l'adresse ip du conteneur.
 - Le conteneur nous répond et on récupère le résultat dans le navigateur

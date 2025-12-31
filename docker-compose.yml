@@ -1,9 +1,7 @@
-version: "3"
-
 services:
   reverse-proxy:
     # The official v2 Traefik docker image
-    image: traefik:v2.6
+    image: traefik:v2.11
     ports:
       # The HTTP port
       - "80:80"
@@ -35,7 +33,7 @@ services:
       # Explicitly tell Traefik to expose this container
       - "traefik.enable=true"
       # The domain the service will respond to
-      - "traefik.http.routers.whoami.rule=Host(`whoami.${TRAEFIK_DOMAIN}`)"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.test`)"
       # Allow request only from the predefined entry point named "web"
       - "traefik.http.routers.whoami.entrypoints=web"
 
